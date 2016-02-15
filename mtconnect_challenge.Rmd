@@ -1,0 +1,172 @@
+
+# Introduction
+
+For a real life working example, we have this dataset graciously provided to us by the National Institute of Standards and Technology (http://www.nist.gov/) for one of their test bed parts. We will be trying to solve the first example from the introduction, which was a real problem faced by the NIST researchers. As we walk through each step of the exploratory process, you will understand how you can use similar techniques to solve similar issues that you might have with your Machine Tools.
+
+# Reading Data into R
+First let us define the raw data files that we are going to be working with. Two sets of 
+example raw data and device XML files are provided along with the package. We will be using
+the one provided by nist for this analysis. Note that the package can read in a compressed file
+as if it were a normal file as well for the log data.
+
+```{r, results='hide'}
+suppressPackageStartupMessages(require(mtconnectR))
+suppressPackageStartupMessages(require(dplyr))
+file_path_adapter_log = "../data/adapter_logs/nist_test_bed/GF_Agie.tar.gz"
+file_path_xml = "../data/adapter_logs/nist_test_bed/Devices.xml"
+```
+
+# Taking a quick look at the raw data
+
+Before we read in the data into the MTC Device Class, it might help us a bit in understanding
+a bit about the raw data items. Let's try to see how the Devices XML and the Raw data looks.
+
+## Devices XML Data
+
+### get_device_info_from_xml
+
+The devices XML has information about the configuration of one or more devices. We can
+check out the devices for which the info is present in the devices XML using the
+`get_device_info_from_xml` function. From the device info, we can select the name of the 
+device that we want to analyse further
+
+```{r}
+(device_info = get_device_info_from_xml(file_path_xml))
+device_name = device_info$name[2]
+```
+
+### get_xpaths_from_xml
+
+The `get_xpath_from_xml` function can read in the xpath info for a single device into
+a easily read data.frame format.
+
+The data.frame contains the id and name of each data item and the xpath along with the 
+type, category and subType of the data_item. It is easy to find out what are the data items
+of a particular type using this function. For example, we are going to find out the conditions
+data items which we will be using in the next step.
+
+```{r}
+xpath_info = get_xpaths_from_xml(file_path_xml, device_name)
+head(xpath_info)
+
+```
+
+## Adapter Log data
+
+`read_adapter_log_file` function reads in all the data from the adapter log into a 
+data.frame. It can optionally take in a conditions
+
+```{r, results='hide'}
+conditions_data_items = xpath_info$id[xpath_info$category == "CONDITION"]
+adapter_log_data = read_adapter_log_file(file_path_adapter_log, condition_names = conditions_data_items)
+```
+```{r}
+head(adapter_log_data)
+
+```
+The adapter data parser has read in all the data from the log, but we still don't have
+any way to organize the different data items into the appropriate strucutre. For that we have 
+to create an MTCDevice Class
+
+
+## Creating MTC Device Class
+
+`create_mtc_device_from_adapter_data` function can read in both the adapter log
+and the xml data for a device and combine it into a single MTCDevice Class with the
+data organized separately for each data item.
+
+
+```{r, results='hide'}
+mtc_device = create_mtc_device_from_adapter_data(file_path_adapter_log, file_path_xml, device_name)
+names(mtc_device@data_item_list)
+
+```
+
+## Exploring different data items
+
+It looks like we have the position data items that we might need for this analysis in
+the log data. Let's see the variation in position. We can plot all the data items in one plot using
+ggplot2.
+
+### Plotting the data
+
+```{r}
+require("ggplot2")
+xpos_data = getDataItem(mtc_device, "Xposition") %>% getData()
+ypos_data = getDataItem(mtc_device, "Yposition") %>% getData()
+zpos_data = getDataItem(mtc_device, "Zposition") %>% getData()
+
+ggplot() + geom_line(data = xpos_data, aes(x = timestamp, y = value))
+ggplot() + geom_line(data = ypos_data, aes(x = timestamp, y = value))
+ggplot() + geom_line(data = zpos_data, aes(x = timestamp, y = value))
+
+```
+
+### Merging different data items for simultaneous analysis
+
+It looks like the machine is going back and forth quite some distance quite often, across
+all the axes. We also don't know how this traversal varies across different axis.
+However, we can get a much better idea of the motion if we could plot one 
+axis against the other. For that we have to merge the different data items. Since the 
+different data items have different timestamp values as the key, it is not as straightforward
+as doing a join of one data item against the other. For this purpose, the `mtconnect` packge has a merge
+method defined for the MTCDevice Class
+
+```{r}
+merged_pos_data = merge(mtc_device, "position") # merge all dataitems with the word position
+head(merged_pos_data)
+```
+
+Oops. Looks like we have also merged in the angular position. Let's try a more 
+directed merge. Also, the names of the data items have the full xpaths attached to them. While this might be
+useful in other circumstances to get the hierarchical position of the data, we can dispense with it
+now using the `extract_param_from_xpath` function. Let's view the data after that
+
+
+```{r}
+merged_pos_data = merge(mtc_device, "position<POSITION-ACTUAL") # merge all dataitems with the word position
+names(merged_pos_data) = extract_param_from_xpath(names(merged_pos_data), param = "DIName", show_warnings = F)
+head(merged_pos_data)
+```
+
+Much better. Now let's plot the data items in one shot.
+
+```{r}
+ggplot(data = merged_pos_data, aes(x = timestamp)) +
+  geom_line(aes(y = Xposition, col = 'red')) +
+  geom_line(aes(y = Yposition, col = 'blue')) +
+  geom_line(aes(y = Zposition, col = 'green'))
+
+```
+
+It does look the sudden traverals are simultaenous across the axes. Plotting one axes
+against the other leads to the same conclusion. It also gives us an idea of the different
+representations of the part
+
+```{r}
+ggplot(data = merged_pos_data, aes(x = Xposition, y = Yposition)) + geom_path()
+ggplot(data = merged_pos_data, aes(x = Xposition, y = Zposition)) + geom_path()
+ggplot(data = merged_pos_data, aes(x = Zposition, y = Yposition)) + geom_path()
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
