@@ -196,29 +196,59 @@ ggplot(data = merged_pos_data, aes(x = timestamp)) +
 
 ```
 
+Let's add this derived data back into the MTCDevice Class.
+
+```{r}
+pfr_data = merged_pos_data %>% select(timestamp, value = pfr) # Structuring data correctly
+mtc_device = add_data_item_to_mtc_device(mtc_device, pfr_data, data_item_name = "pfr<PATH_FEEDRATE>",
+                                         data_item_type = "Sample", source_type = "calculated")
+names(mtc_device@data_item_list)
+```
+
 # Identifying Inefficiencies
 
 ## Idle times
 Our first task is to identify the periods when the machine was idle. For this we 
 can use a few approaches.
 
-- Find out the times when the execution status was not active
-- Find out the times when the machine was not feeding (PFR~0)
+- Find out the times when the execution status was not active OR
+- Find out the times when the machine was not feeding (PFR~0) OR
 - Find the periods when the feed override was zero
 
-We will be trying out all the approaches and choosing the one that is best for us.
+We will be trying out all the approaches and choosing union of the three as the period
+when machine is idle.
 
 ```{r}
-mtc_device@data_item_list[[2]]
+# Getting all the relevant data
+merged_data = merge(mtc_device, "EXECUTION|PATH_FEEDRATE|POSITION")
+names(merged_data) = extract_param_from_xpath(names(merged_data), param = "DIName", show_warnings = F)
 
+merged_data = merged_data %>% 
+  mutate(exec_idle = F, feed_idle = F, override_idle = F) %>% # Setting everything false by default
+  mutate(exec_idle = replace(exec_idle, !(execution %in% "ACTIVE"), TRUE)) %>% 
+  mutate(feed_idle = replace(feed_idle, pfr < 0.01, TRUE)) %>% 
+  mutate(override_idle = replace(override_idle, Fovr < 1, TRUE)) %>% 
+  mutate(any_idle = as.logical(exec_idle + feed_idle + override_idle))
+  
+```
+
+## Machine tool at origin
+
+We need to identify the time spent by the machine at origin. Let's look at the 
+X - Y graph again
+
+```{r}
+ggplot(data = merged_pos_data, aes(x = Xposition, y = Yposition)) + geom_path()
 
 ```
 
-##
-and 2) when the machine was not wasting time travelling to origin. For this we have to 
-
+It is clear that the periods when the machine was origin are roughly X > 30, Y < -30.
+Adding this into the mix
 
 ```{r}
+merged_data = merged_data %>% 
+  mutate(at_origin = F) %>% # Setting everything false by default
+  mutate(at_origin = replace(at_origin, Xposition > 30 & Yposition < -30, TRUE)) 
 
 
 ```
