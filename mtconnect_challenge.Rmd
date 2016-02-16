@@ -3,6 +3,10 @@
 
 For a real life working example, we have this dataset graciously provided to us by the National Institute of Standards and Technology (http://www.nist.gov/) for one of their test bed parts. We will be trying to solve the first example from the introduction, which was a real problem faced by the NIST researchers. As we walk through each step of the exploratory process, you will understand how you can use similar techniques to solve similar issues that you might have with your Machine Tools.
 
+# Problem Statement
+
+Accurately estimate the actual cycle time of a part, from the data of a part that was manufactured with interruptions.
+
 # Reading Data into R
 First let us define the raw data files that we are going to be working with. Two sets of 
 example raw data and device XML files are provided along with the package. We will be using
@@ -82,16 +86,17 @@ names(mtc_device@data_item_list)
 
 ```
 
-## Exploring different data items
+# Exploring different data items
 
 It looks like we have the position data items that we might need for this analysis in
 the log data. Let's see the variation in position. We can plot all the data items in one plot using
 ggplot2.
 
-### Plotting the data
+## Plotting the data
 
 ```{r}
 require("ggplot2")
+require("reshape2")
 xpos_data = getDataItem(mtc_device, "Xposition") %>% getData()
 ypos_data = getDataItem(mtc_device, "Yposition") %>% getData()
 zpos_data = getDataItem(mtc_device, "Zposition") %>% getData()
@@ -102,7 +107,7 @@ ggplot() + geom_line(data = zpos_data, aes(x = timestamp, y = value))
 
 ```
 
-### Merging different data items for simultaneous analysis
+## Merging different data items for simultaneous analysis
 
 It looks like the machine is going back and forth quite some distance quite often, across
 all the axes. We also don't know how this traversal varies across different axis.
@@ -133,9 +138,10 @@ Much better. Now let's plot the data items in one shot.
 
 ```{r}
 ggplot(data = merged_pos_data, aes(x = timestamp)) +
-  geom_line(aes(y = Xposition, col = 'red')) +
-  geom_line(aes(y = Yposition, col = 'blue')) +
-  geom_line(aes(y = Zposition, col = 'green'))
+  geom_line(aes(y = Xposition, col = 'Xpos')) +
+  geom_line(aes(y = Yposition, col = 'Ypos')) +
+  geom_line(aes(y = Zposition, col = 'Zpos')) +
+  theme(legend.title = element_blank())
 
 ```
 
@@ -151,22 +157,66 @@ ggplot(data = merged_pos_data, aes(x = Zposition, y = Yposition)) + geom_path()
 ```
 So the machine tool is going to the origin every so often. 
 
-In addition, you want to discount the times when the machine was idle
+# Deriving new process parameters
+
+It might help our analysis to also calculate a few process parameters that the machine
+tool is not providing directly. Here we are going to calculate 
+
+- Path Feedrate
+- Origin in machine axes
+- Distance from origin
+
+## Derived Path Feedrate
+
+Path Feedrate can be calculated as the rate of change of the position values. Here,
+we must use the 3-dimensional distance value and not just one of the position vectors.
+
+PFR = Total Distance / Total Time
+    = Sqrt(Sum of Squares of distane along individual axis) / time taken for motion
 
 ```{r}
+position_change_3d = 
+  ((lead(merged_pos_data$Xposition, 1) - merged_pos_data$Xposition) ^ 2 +
+  (lead(merged_pos_data$Yposition, 1) - merged_pos_data$Yposition) ^ 2 +
+  (lead(merged_pos_data$Zposition, 1) - merged_pos_data$Zposition) ^ 2 ) ^ 0.5
+
+merged_pos_data$time_taken = 
+  lead(as.numeric(merged_pos_data$timestamp), 1) - as.numeric(merged_pos_data$timestamp)
+
+merged_pos_data$pfr = round(position_change_3d / merged_pos_data$time_taken, 4)
+
+dt.df <- melt(merged_pos_data, measure.vars = c("pfr", "Xposition", "Yposition"))
+ggplot(dt.df, aes(x = timestamp, y = value)) +
+  geom_line(aes(color = variable)) +
+  facet_grid(variable ~ ., scales = "free_y") 
+
+ggplot(data = merged_pos_data, aes(x = timestamp)) + 
+  geom_step(aes(y = pfr)) +
+  geom_step(aes(y = Xposition)) 
+
+```
+
+# Identifying Inefficiencies
+
+## Idle times
+Our first task is to identify the periods when the machine was idle. For this we 
+can use a few approaches.
+
+- Find out the times when the execution status was not active
+- Find out the times when the machine was not feeding (PFR~0)
+- Find the periods when the feed override was zero
+
+We will be trying out all the approaches and choosing the one that is best for us.
+
+```{r}
+mtc_device@data_item_list[[2]]
 
 
 ```
-```{r}
 
+##
+and 2) when the machine was not wasting time travelling to origin. For this we have to 
 
-
-```
-
-```{r}
-
-
-```
 
 ```{r}
 
