@@ -148,15 +148,17 @@ ggplot(data = merged_pos_data, aes(x = Xposition, y = Yposition)) + geom_path()
 ggplot(data = merged_pos_data, aes(x = Xposition, y = Zposition)) + geom_path()
 ggplot(data = merged_pos_data, aes(x = Zposition, y = Yposition)) + geom_path()
 
-
 ```
+So the machine tool is going to the origin every so often. 
+
+In addition, you want to discount the times when the machine was idle
 
 ```{r}
 
 
 ```
-
 ```{r}
+
 
 
 ```
