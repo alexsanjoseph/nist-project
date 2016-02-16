@@ -228,8 +228,9 @@ merged_data = merged_data %>%
   mutate(exec_idle = replace(exec_idle, !(execution %in% "ACTIVE"), TRUE)) %>% 
   mutate(feed_idle = replace(feed_idle, pfr < 0.01, TRUE)) %>% 
   mutate(override_idle = replace(override_idle, Fovr < 1, TRUE)) %>% 
-  mutate(any_idle = as.logical(exec_idle + feed_idle + override_idle))
-  
+  mutate(machine_idle = as.logical(exec_idle + feed_idle + override_idle))
+head(merged_data)  
+
 ```
 
 ## Machine tool at origin
@@ -246,9 +247,46 @@ It is clear that the periods when the machine was origin are roughly X > 30, Y <
 Adding this into the mix
 
 ```{r}
-merged_data = merged_data %>% 
+merged_data_final = merged_data %>% 
   mutate(at_origin = F) %>% # Setting everything false by default
-  mutate(at_origin = replace(at_origin, Xposition > 30 & Yposition < -30, TRUE)) 
+  mutate(at_origin = replace(at_origin, Xposition > 30 & Yposition < -30, TRUE)) %>% 
+  select(timestamp, machine_idle, at_origin)
+head(merged_data_final)
 
+```
+
+# Calculating Summary Statistics
+
+Now we have all the data at our disposal to calculate the time statistics. First we 
+need to convert the time series into interval format to get the duratins. We can use
+`convert_ts_to_interval` function to do the same.
+
+```{r}
+merged_data_intervals = convert_ts_to_interval(merged_data_final)
+head(merged_data_intervals)
+
+```
+
+Now we can aggregate across the different states to find the total amount of time
+in each state.
+
+```{r}
+time_summary = merged_data_intervals %>% group_by(machine_idle, at_origin) %>% 
+  summarise(total_time = sum(duration, na.rm = T))
+
+total_time = sum(time_summary$total_time)
+efficient_time = sum(time_summary$total_time[1])
+inefficient_time = sum(time_summary$total_time[2:4])
+interrupted_time = sum(time_summary$total_time[3:4])
+time_at_origin = sum(time_summary$total_time[c(2,4)])
+
+```
+
+```{r, echo = FALSE}
+print("Results")
+print(paste0("Total Time of Operation (including interruptions) = ", total_time, "s"))
+print(paste0("Total Time without identified inefficiencies = ", efficient_time, "s"))
+print(paste0("Total Time wasted due to interruptions = ", interrupted_time, "s"))
+print(paste0("Total Time wasted due to being at origin = ", time_at_origin, "s"))
 
 ```
