@@ -9,9 +9,9 @@ Accurately estimate the actual cycle time of a part, from the data of a part tha
 
 # Reading Data into R
 First let us define the data files that we are going to be working with. Two sets of 
-example parsed MTConnect Agent data and device XML files are provided along with the package. We will be using
-the one provided by nist for this analysis. Note that the package can read in a compressed file
-as if it were a normal file as well for the log data.
+example data from the MTConnect Agent samples and the result of the MTConnect probe are provided 
+along with the package. We will be using the one provided by nist for this analysis. Note that the 
+package can read in a compressed file as if it were a normal file as well for the samples.
 
 ```{r, results='hide'}
 suppressPackageStartupMessages(require(mtconnectR))
@@ -29,9 +29,8 @@ a bit about the data items that we have.
 
 ### get_device_info_from_xml
 
-The devices XML has information about the configuration of one or more devices. This
-file can be built either from the `probe` request from a working MTConnect Agent or directly
-from the configuration of the MTConnect Agent if you have access to it
+The `MTConnectDevices` XML document has information about the logical components of one or
+more devices. This file can obtained using the `probe` request from an MTConnect Agent.
 
 We can check out the devices for which the info is present in the devices XML using the
 `get_device_info_from_xml` function. From the device info, we can select the name of the 
@@ -47,10 +46,10 @@ device_name = device_info$name[2]
 The `get_xpath_from_xml` function can read in the xpath info for a single device into
 a easily read data.frame format.
 
-The data.frame contains the id and name of each data item and the xpath along with the 
-type, category and subType of the data_item. It is easy to find out what are the data items
-of a particular type using this function. For example, we are going to find out the conditions
-data items which we will be using in the next step.
+The data.frame contains the id and name of each data item and the xpath along with the type,
+category and subType of the data_item. It is easy to find out what are the data items of a
+particular type using this function. For example, we are going to find out the conditions data
+items which we will be using in the next step.
 
 ```{r}
 xpath_info = get_xpaths_from_xml(file_path_xml, device_name)
@@ -58,17 +57,11 @@ head(xpath_info)
 
 ```
 
-## Getting Adapter log data by parsing Agent data
+## Getting Sample data by parsing `MTConnectStreams` data
 
-Alternately, data from an MTConnect Agent can be passed through a `ruby` parsed to get the parsed
-agent data, which is used by the `mtconnectR` Package. 
-
-
-## Raw Adapter Log data - Not Recommended
-
-If you don't have the Agent data with you, you can use the Adapter Log data directly.
-This method is not recommended because it is common for the Adapter Log to have various
-errors and inconsistencies which might affect the integity of the analysis.
+`MTConnectStreams` data from an MTConnect Agent can be collected using a `ruby` script to
+generate a delimited log of device data (referred to in this document as *log data*) which is
+then used by the `mtconnectR` Package.
 
 
 ## Creating MTC Device Class
@@ -86,8 +79,8 @@ names(mtc_device@data_item_list)
 
 # Exploring different data items
 
-It looks like we have the position data items that we might need for this analysis in
-the log data. Let's see the variation in position. We can plot all the data items in one plot using
+It looks like we have the position data items that we might need for this analysis in the log
+data. Let's see the variation in position. We can plot all the data items in one plot using
 ggplot2.
 
 ## Plotting the data
