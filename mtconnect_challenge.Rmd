@@ -8,8 +8,8 @@ For a real life working example, we have this dataset graciously provided to us 
 Accurately estimate the actual cycle time of a part, from the data of a part that was manufactured with interruptions.
 
 # Reading Data into R
-First let us define the raw data files that we are going to be working with. Two sets of 
-example raw data and device XML files are provided along with the package. We will be using
+First let us define the data files that we are going to be working with. Two sets of 
+example parsed MTConnect Agent data and device XML files are provided along with the package. We will be using
 the one provided by nist for this analysis. Note that the package can read in a compressed file
 as if it were a normal file as well for the log data.
 
@@ -20,17 +20,20 @@ file_path_adapter_log = "../data/adapter_logs/nist_test_bed/GF_Agie.tar.gz"
 file_path_xml = "../data/adapter_logs/nist_test_bed/Devices.xml"
 ```
 
-# Taking a quick look at the raw data
+## Taking a quick look at the data files
 
 Before we read in the data into the MTC Device Class, it might help us a bit in understanding
-a bit about the raw data items. Let's try to see how the Devices XML and the Raw data looks.
+a bit about the data items that we have. 
 
 ## Devices XML Data
 
 ### get_device_info_from_xml
 
-The devices XML has information about the configuration of one or more devices. We can
-check out the devices for which the info is present in the devices XML using the
+The devices XML has information about the configuration of one or more devices. This
+file can be built either from the `probe` request from a working MTConnect Agent or directly
+from the configuration of the MTConnect Agent if you have access to it
+
+We can check out the devices for which the info is present in the devices XML using the
 `get_device_info_from_xml` function. From the device info, we can select the name of the 
 device that we want to analyse further
 
@@ -55,22 +58,17 @@ head(xpath_info)
 
 ```
 
-## Adapter Log data
+## Getting Adapter log data by parsing Agent data
 
-`read_adapter_log_file` function reads in all the data from the adapter log into a 
-data.frame. It can optionally take in a conditions
+Alternately, data from an MTConnect Agent can be passed through a `ruby` parsed to get the parsed
+agent data, which is used by the `mtconnectR` Package. 
 
-```{r, results='hide'}
-conditions_data_items = xpath_info$id[xpath_info$category == "CONDITION"]
-adapter_log_data = read_adapter_log_file(file_path_adapter_log, condition_names = conditions_data_items)
-```
-```{r}
-head(adapter_log_data)
 
-```
-The adapter data parser has read in all the data from the log, but we still don't have
-any way to organize the different data items into the appropriate strucutre. For that we have 
-to create an MTCDevice Class
+## Raw Adapter Log data - Not Recommended
+
+If you don't have the Agent data with you, you can use the Adapter Log data directly.
+This method is not recommended because it is common for the Adapter Log to have various
+errors and inconsistencies which might affect the integity of the analysis.
 
 
 ## Creating MTC Device Class
