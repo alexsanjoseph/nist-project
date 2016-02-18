@@ -16,8 +16,8 @@ package can read in a compressed file as if it were a normal file as well for th
 ```{r, results='hide'}
 suppressPackageStartupMessages(require(mtconnectR))
 suppressPackageStartupMessages(require(dplyr))
-file_path_adapter_log = "../data/adapter_logs/nist_test_bed/GF_Agie.tar.gz"
-file_path_xml = "../data/adapter_logs/nist_test_bed/Devices.xml"
+file_path_dmtcd = "../data/delimited_mtc_data/nist_test_bed/GF_Agie.tar.gz"
+file_path_xml = "../data/delimited_mtc_data/nist_test_bed/Devices.xml"
 ```
 
 ## Taking a quick look at the data files
@@ -66,13 +66,13 @@ then used by the `mtconnectR` Package.
 
 ## Creating MTC Device Class
 
-`create_mtc_device_from_adapter_data` function can read in both the adapter log
+`create_mtc_device_from_dmtcd` function can read in both the Delimited MTConnect data (DMTCD)
 and the xml data for a device and combine it into a single MTCDevice Class with the
 data organized separately for each data item.
 
 
 ```{r, results='hide'}
-mtc_device = create_mtc_device_from_adapter_data(file_path_adapter_log, file_path_xml, device_name)
+mtc_device = create_mtc_device_from_dmtcd(file_path_adapter_log, file_path_xml, device_name)
 names(mtc_device@data_item_list)
 
 ```
