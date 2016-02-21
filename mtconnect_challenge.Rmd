@@ -72,7 +72,7 @@ data organized separately for each data item.
 
 
 ```{r, results='hide'}
-mtc_device = create_mtc_device_from_dmtcd(file_path_adapter_log, file_path_xml, device_name)
+mtc_device = create_mtc_device_from_dmtcd(file_path_dmtcd, file_path_xml, device_name)
 names(mtc_device@data_item_list)
 
 ```
