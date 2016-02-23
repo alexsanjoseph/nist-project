@@ -5,7 +5,8 @@ For a real life working example, we have this dataset graciously provided to us 
 
 # Problem Statement
 
-Accurately estimate the actual cycle time of a part, from the data of a part that was manufactured with interruptions.
+Accurately estimate the productive time of a part, from the data of a part that was manufactured with interruptions. Productive
+time is defined as the time taken by the machine to complete the part excluding interruptions and inefficiencies.
 
 # Reading Data into R
 First let us define the data files that we are going to be working with. Two sets of 
@@ -146,16 +147,14 @@ ggplot(data = merged_pos_data, aes(x = Xposition, y = Zposition)) + geom_path()
 ggplot(data = merged_pos_data, aes(x = Zposition, y = Yposition)) + geom_path()
 
 ```
+
 So the machine tool is going to the origin every so often. 
 
 # Deriving new process parameters
 
 It might help our analysis to also calculate a few process parameters that the machine
-tool is not providing directly. Here we are going to calculate 
-
-- Path Feedrate
-- Origin in machine axes
-- Distance from origin
+tool is not providing directly. Here we are going to calculate the actual Path Feedrate
+of the machine as it executes the process using the position data.
 
 ## Derived Path Feedrate
 
@@ -264,6 +263,8 @@ in each state.
 ```{r}
 time_summary = merged_data_intervals %>% group_by(machine_idle, at_origin) %>% 
   summarise(total_time = sum(duration, na.rm = T))
+
+print(time_summary)
 
 total_time = sum(time_summary$total_time)
 efficient_time = sum(time_summary$total_time[1])
